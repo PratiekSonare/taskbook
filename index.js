@@ -69,6 +69,10 @@ const taskbookCLI = (input, flags) => {
     return taskbook.clear();
   }
 
+  if (flags.pomodoro) {
+    return taskbook.startPomodoro(input);
+  }
+
   taskbook.displayByBoard();
   return taskbook.displayStats();
 };

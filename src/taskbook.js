@@ -368,6 +368,47 @@ class Taskbook {
     render.markPaused(paused);
   }
 
+  startPomodoro(ids) {
+    ids = this._validateIDs(ids);
+    const {_data} = this;
+    
+    //consider only the first id
+    const id = ids[0];
+    const task = _data[id];
+
+    if(!task._isTask){
+      console.log("Given id is no task!");
+      return;
+    }
+
+    task.inProgress = true;
+    this._save(_data);
+
+    const duration = 1 * 60 * 1000; // 25 minutes
+    const endTime = Date.now() + duration;
+
+    render.successStartPomodoro(id);
+
+    const timer = setInterval(() => {
+      const remaining = endTime - Date.now();
+
+      if(remaining <= 0){
+        clearInterval(timer);
+        this.checkTasks([id]);
+        render.successCompletePomodoro(id);
+        return;
+      }
+
+      const mins = Math.floor(remaining / 60000);
+      const secs = Math.floor( (remaining % 60000) / 1000);
+
+      process.stdout.write(
+        `\r⏳ Time left: ${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')} `
+      );
+      //need this timer on render.
+    }, 1000);
+  }
+
   createTask(desc) {
     const {boards, description, id, priority} = this._getOptions(desc);
     const task = new Task({id, description, boards, priority});

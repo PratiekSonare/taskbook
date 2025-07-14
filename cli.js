@@ -78,6 +78,10 @@ const cli = meow(help, {
     },
     clear: {
       type: 'boolean'
+    },
+    pomodoro: {
+      type: 'boolean',
+      alias: 'z'
     }
   }
 });
