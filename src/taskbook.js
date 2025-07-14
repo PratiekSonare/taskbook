@@ -349,6 +349,26 @@ class Taskbook {
     render.markComplete(checked);
     render.markIncomplete(unchecked);
   }
+  
+  createTask(desc) {
+    const {boards, description, id, priority} = this._getOptions(desc);
+
+    const hourToken = desc.find(x => x.startsWith('h:'));
+    let pomodoroPlanned = 0;
+
+    if(hourToken) {
+      const hours = parseFloat(hourToken.slice(2));
+      if(!isNaN(hours) && hours > 0){
+        pomodoroPlanned = Math.floor((hours * 60) / 25);
+      }
+    }
+
+    const task = new Task({ id, description, boards, priority, pomodoroPlanned });
+    const {_data} = this;
+    _data[id] = task;
+    this._save(_data);
+    render.successCreate(task);
+  }
 
   beginTasks(ids) {
     ids = this._validateIDs(ids);
@@ -381,10 +401,15 @@ class Taskbook {
       return;
     }
 
+    if (typeof task.pomodoroPlanned !== 'number') {
+      console.log(`No Pomodoro cycles planned for this task. Please recreate it with 'h:<hours>'.`);
+      return;
+    }
+
     task.inProgress = true;
     this._save(_data);
 
-    const duration = 1 * 60 * 1000; // 25 minutes
+    const duration = 25 * 60 * 1000; // 25 minutes
     const endTime = Date.now() + duration;
 
     render.successStartPomodoro(id);
@@ -394,28 +419,28 @@ class Taskbook {
 
       if(remaining <= 0){
         clearInterval(timer);
-        this.checkTasks([id]);
-        render.successCompletePomodoro(id);
+
+        task.pomodoroCompleted = (task.pomodoroCompleted || 0) + 1;
+
+        if(task.pomodoroCompleted === task.pomodoroPlanned) {
+          this._save(_data);
+          this.checkTasks([id]);
+          render.successCompletePomodoro(id);
+        }
+
         return;
       }
 
       const mins = Math.floor(remaining / 60000);
       const secs = Math.floor( (remaining % 60000) / 1000);
+      const currentCycle = (task.pomodoroCompleted || 0) + 1;
+      const totalCycles = (task.pomodoroPlanned)
 
       process.stdout.write(
-        `\r⏳ Time left: ${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')} `
+        `\r⏳ Time left: ${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')} => Cycle: ${String(currentCycle).padStart(2, '0')} / ${String(totalCycles)}; `
       );
-      //need this timer on render.
+      
     }, 1000);
-  }
-
-  createTask(desc) {
-    const {boards, description, id, priority} = this._getOptions(desc);
-    const task = new Task({id, description, boards, priority});
-    const {_data} = this;
-    _data[id] = task;
-    this._save(_data);
-    render.successCreate(task);
   }
 
   deleteItems(ids) {

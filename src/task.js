@@ -9,6 +9,8 @@ class Task extends Item {
     this.inProgress = options.inProgress || false;
     this.isStarred = options.isStarred || false;
     this.priority = options.priority || 1;
+    this.pomodoroPlanned = options.pomodoroPlanned || 0;
+    this.pomodoroCompleted = options.pomodoroCompleted || 0;
   }
 }
 
