@@ -70,7 +70,7 @@ const taskbookCLI = (input, flags) => {
   }
 
   if (flags.pomodoro) {
-    return taskbook.startPomodoro(input);
+    return taskbook.startPomodoro(input); // This will now run asynchronously
   }
 
   taskbook.displayByBoard();

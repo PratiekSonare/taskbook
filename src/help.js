@@ -24,7 +24,8 @@ module.exports = `
       --task, -t         Create task
       --timeline, -i     Display timeline view
       --version, -v      Display installed version
-
+      --pomodoro         Start a Pomodoro timer
+      
     Examples
       $ tb
       $ tb --archive

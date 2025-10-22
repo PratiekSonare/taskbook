@@ -352,18 +352,7 @@ class Taskbook {
   
   createTask(desc) {
     const {boards, description, id, priority} = this._getOptions(desc);
-
-    const hourToken = desc.find(x => x.startsWith('h:'));
-    let pomodoroPlanned = 0;
-
-    if(hourToken) {
-      const hours = parseFloat(hourToken.slice(2));
-      if(!isNaN(hours) && hours > 0){
-        pomodoroPlanned = Math.floor((hours * 60) / 25);
-      }
-    }
-
-    const task = new Task({ id, description, boards, priority, pomodoroPlanned });
+    const task = new Task({ id, description, boards, priority });
     const {_data} = this;
     _data[id] = task;
     this._save(_data);
@@ -388,59 +377,74 @@ class Taskbook {
     render.markPaused(paused);
   }
 
-  startPomodoro(ids) {
+  async startPomodoro(ids) {
     ids = this._validateIDs(ids);
     const {_data} = this;
     
     //consider only the first id
     const id = ids[0];
     const task = _data[id];
-
+  
     if(!task._isTask){
       console.log("Given id is no task!");
       return;
     }
-
-    if (typeof task.pomodoroPlanned !== 'number') {
-      console.log(`No Pomodoro cycles planned for this task. Please recreate it with 'h:<hours>'.`);
-      return;
-    }
-
-    task.inProgress = true;
-    this._save(_data);
-
-    const duration = 25 * 60 * 1000; // 25 minutes
-    const endTime = Date.now() + duration;
-
-    render.successStartPomodoro(id);
-
-    const timer = setInterval(() => {
-      const remaining = endTime - Date.now();
-
-      if(remaining <= 0){
-        clearInterval(timer);
-
-        task.pomodoroCompleted = (task.pomodoroCompleted || 0) + 1;
-
-        if(task.pomodoroCompleted === task.pomodoroPlanned) {
-          this._save(_data);
-          this.checkTasks([id]);
-          render.successCompletePomodoro(id);
-        }
-
+  
+    const readline = require('readline').createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
+  
+    readline.question('Enter number of hours for pomodoro: ', hours => {
+      readline.close();
+      const pomodoroHours = parseFloat(hours);
+  
+      if (isNaN(pomodoroHours) || pomodoroHours <= 0) {
+        console.log('Invalid input. Please enter a positive number for hours.');
         return;
       }
-
-      const mins = Math.floor(remaining / 60000);
-      const secs = Math.floor( (remaining % 60000) / 1000);
-      const currentCycle = (task.pomodoroCompleted || 0) + 1;
-      const totalCycles = (task.pomodoroPlanned)
-
-      process.stdout.write(
-        `\r⏳ Time left: ${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')} => Cycle: ${String(currentCycle).padStart(2, '0')} / ${String(totalCycles)}; `
-      );
-      
-    }, 1000);
+  
+      task.pomodoroPlanned = Math.floor((pomodoroHours * 60) / 25);
+      task.pomodoroCompleted = 0; // Reset completed cycles
+      task.inProgress = true;
+      this._save(_data);
+  
+      render.successStartPomodoro(id);
+      console.log(`Starting ${task.pomodoroPlanned} pomodoro cycles for task ${id}.`);
+  
+      const startCycle = () => {
+        if (task.pomodoroCompleted >= task.pomodoroPlanned) {
+          this.checkTasks([id]); // Mark task as complete
+          render.successCompletePomodoro(id);
+          console.log('\nAll pomodoro cycles completed! Task marked as done.');
+          return;
+        }
+  
+        const duration = 25 * 60 * 1000; // 25 minutes
+        const endTime = Date.now() + duration;
+        const currentCycle = task.pomodoroCompleted + 1;
+  
+        const timer = setInterval(() => {
+          const remaining = endTime - Date.now();
+  
+          if (remaining <= 0) {
+            clearInterval(timer);
+            task.pomodoroCompleted++;
+            this._save(_data);
+            console.log(`\nCycle ${currentCycle} of ${task.pomodoroPlanned} completed!`);
+            // Here you could add a break timer before the next cycle starts.
+            startCycle(); // Start next cycle
+            return;
+          }
+  
+          const mins = Math.floor(remaining / 60000);
+          const secs = Math.floor((remaining % 60000) / 1000);
+          process.stdout.write(`\r🍅 Cycle ${currentCycle}/${task.pomodoroPlanned} [${'#'.repeat(Math.floor((25*60*1000 - remaining)/(25*60*1000)*20)).padEnd(20, ' ')}] ${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')} `);
+        }, 1000);
+      };
+  
+      startCycle();
+    });
   }
 
   deleteItems(ids) {
